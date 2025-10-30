@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
 import Icon from '@/components/ui/icon';
 
 type Section = 'home' | 'recommended' | 'subscriptions' | 'trending' | 'history' | 'playlists' | 'upload';
@@ -96,6 +100,10 @@ const Index = () => {
 
   if (selectedVideo) {
     return <VideoPlayer video={selectedVideo} onBack={() => setSelectedVideo(null)} />;
+  }
+
+  if (activeSection === 'upload') {
+    return <UploadSection onBack={() => setActiveSection('home')} />;
   }
 
   return (
@@ -506,6 +514,248 @@ const VideoPlayer = ({ video, onBack }: VideoPlayerProps) => {
             </div>
           </div>
         </div>
+      </main>
+    </div>
+  );
+};
+
+const UploadSection = ({ onBack }: { onBack: () => void }) => {
+  const { toast } = useToast();
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [uploadData, setUploadData] = useState({
+    title: '',
+    description: '',
+    category: 'education'
+  });
+
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setVideoFile(e.target.files[0]);
+    }
+  };
+
+  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setThumbnailFile(e.target.files[0]);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!videoFile) {
+      toast({
+        title: "Ошибка",
+        description: "Выберите видеофайл для загрузки",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!uploadData.title.trim()) {
+      toast({
+        title: "Ошибка",
+        description: "Введите название видео",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "Видео загружается",
+      description: `"${uploadData.title}" будет опубликовано после обработки`,
+    });
+
+    setTimeout(() => {
+      onBack();
+    }, 2000);
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="fixed top-0 left-0 right-0 h-14 bg-background border-b border-border flex items-center px-4 z-50">
+        <Button variant="ghost" size="icon" onClick={onBack}>
+          <Icon name="ArrowLeft" size={24} />
+        </Button>
+        <div className="flex items-center gap-2 ml-4">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <Icon name="Play" size={20} className="text-primary-foreground" />
+          </div>
+          <span className="text-xl font-bold">VideoHub</span>
+        </div>
+      </header>
+
+      <main className="mt-14 max-w-4xl mx-auto p-6">
+        <h1 className="text-3xl font-bold mb-2">Загрузка видео</h1>
+        <p className="text-muted-foreground mb-8">Поделитесь своим контентом с миллионами зрителей</p>
+
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Информация о видео</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="title">Название *</Label>
+                    <Input
+                      id="title"
+                      placeholder="Добавьте название, которое описывает ваше видео"
+                      value={uploadData.title}
+                      onChange={(e) => setUploadData({ ...uploadData, title: e.target.value })}
+                      className="mt-2"
+                      maxLength={100}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {uploadData.title.length}/100
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="description">Описание</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Расскажите зрителям о своём видео"
+                      value={uploadData.description}
+                      onChange={(e) => setUploadData({ ...uploadData, description: e.target.value })}
+                      className="mt-2 min-h-32"
+                      maxLength={5000}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {uploadData.description.length}/5000
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="category">Категория</Label>
+                    <select
+                      id="category"
+                      value={uploadData.category}
+                      onChange={(e) => setUploadData({ ...uploadData, category: e.target.value })}
+                      className="w-full mt-2 h-10 px-3 rounded-md border border-border bg-background"
+                    >
+                      <option value="education">Образование</option>
+                      <option value="entertainment">Развлечения</option>
+                      <option value="gaming">Игры</option>
+                      <option value="music">Музыка</option>
+                      <option value="tech">Технологии</option>
+                      <option value="sport">Спорт</option>
+                      <option value="news">Новости</option>
+                      <option value="blog">Блог</option>
+                    </select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Обложка видео</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-secondary transition-colors">
+                    <input
+                      type="file"
+                      id="thumbnail"
+                      accept="image/*"
+                      onChange={handleThumbnailChange}
+                      className="hidden"
+                    />
+                    <label htmlFor="thumbnail" className="cursor-pointer">
+                      {thumbnailFile ? (
+                        <div className="space-y-2">
+                          <Icon name="Image" size={48} className="mx-auto text-secondary" />
+                          <p className="font-medium">{thumbnailFile.name}</p>
+                          <p className="text-sm text-muted-foreground">Нажмите для изменения</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Icon name="Image" size={48} className="mx-auto text-muted-foreground" />
+                          <p className="font-medium">Загрузите обложку</p>
+                          <p className="text-sm text-muted-foreground">
+                            Рекомендуем изображение 1280x720
+                          </p>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Видеофайл</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-secondary transition-colors">
+                    <input
+                      type="file"
+                      id="video"
+                      accept="video/*"
+                      onChange={handleVideoChange}
+                      className="hidden"
+                    />
+                    <label htmlFor="video" className="cursor-pointer">
+                      {videoFile ? (
+                        <div className="space-y-2">
+                          <Icon name="Video" size={48} className="mx-auto text-secondary" />
+                          <p className="font-medium text-sm">{videoFile.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(videoFile.size / (1024 * 1024)).toFixed(2)} МБ
+                          </p>
+                          <p className="text-xs text-muted-foreground">Нажмите для изменения</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Icon name="Upload" size={48} className="mx-auto text-muted-foreground" />
+                          <p className="font-medium">Выберите файл</p>
+                          <p className="text-xs text-muted-foreground">или перетащите сюда</p>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-accent/50">
+                <CardContent className="pt-6">
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-start gap-2">
+                      <Icon name="Info" size={16} className="text-secondary mt-0.5 flex-shrink-0" />
+                      <p className="text-muted-foreground">
+                        Ваше видео будет обработано после загрузки
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Icon name="Clock" size={16} className="text-secondary mt-0.5 flex-shrink-0" />
+                      <p className="text-muted-foreground">
+                        Обработка может занять несколько минут
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Icon name="Shield" size={16} className="text-secondary mt-0.5 flex-shrink-0" />
+                      <p className="text-muted-foreground">
+                        Следите за соблюдением авторских прав
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Button 
+                type="submit" 
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                size="lg"
+              >
+                <Icon name="Upload" size={20} className="mr-2" />
+                Опубликовать видео
+              </Button>
+            </div>
+          </div>
+        </form>
       </main>
     </div>
   );
