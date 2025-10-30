@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -19,74 +19,47 @@ interface Video {
   thumbnail: string;
   avatar: string;
   duration: string;
+  description?: string;
+  channelAvatar?: string;
+  subscribersCount?: string;
+  likes?: string;
 }
 
-const mockVideos: Video[] = [
-  {
-    id: '1',
-    title: 'Создание React приложений с нуля',
-    channel: 'WebDev Pro',
-    views: '1.2M',
-    time: '2 дня назад',
-    thumbnail: '/placeholder.svg',
-    avatar: '/placeholder.svg',
-    duration: '15:24'
-  },
-  {
-    id: '2',
-    title: 'Топ 10 трендов веб-разработки 2024',
-    channel: 'Tech Review',
-    views: '856K',
-    time: '1 неделю назад',
-    thumbnail: '/placeholder.svg',
-    avatar: '/placeholder.svg',
-    duration: '22:15'
-  },
-  {
-    id: '3',
-    title: 'Как стать frontend разработчиком',
-    channel: 'Code Masters',
-    views: '2.1M',
-    time: '3 дня назад',
-    thumbnail: '/placeholder.svg',
-    avatar: '/placeholder.svg',
-    duration: '18:47'
-  },
-  {
-    id: '4',
-    title: 'TypeScript полное руководство',
-    channel: 'Dev Academy',
-    views: '654K',
-    time: '5 дней назад',
-    thumbnail: '/placeholder.svg',
-    avatar: '/placeholder.svg',
-    duration: '31:08'
-  },
-  {
-    id: '5',
-    title: 'Дизайн систем в 2024',
-    channel: 'UX/UI School',
-    views: '423K',
-    time: '1 день назад',
-    thumbnail: '/placeholder.svg',
-    avatar: '/placeholder.svg',
-    duration: '12:33'
-  },
-  {
-    id: '6',
-    title: 'Оптимизация производительности React',
-    channel: 'WebDev Pro',
-    views: '987K',
-    time: '4 дня назад',
-    thumbnail: '/placeholder.svg',
-    avatar: '/placeholder.svg',
-    duration: '25:19'
-  }
-];
+interface Comment {
+  id: string;
+  author: string;
+  avatar: string;
+  text: string;
+  likes: number;
+  time: string;
+  replies: Comment[];
+}
+
+const API_URL = 'https://functions.poehali.dev/a7b30a67-7666-4e65-b314-d5c1a8964720';
+
+
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState<Section>('home');
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchVideos();
+  }, []);
+
+  const fetchVideos = async () => {
+    try {
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      setVideos(data);
+    } catch (error) {
+      console.error('Error fetching videos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const sidebarItems = [
     { id: 'home' as Section, label: 'Главная', icon: 'Home' },
@@ -99,7 +72,7 @@ const Index = () => {
   ];
 
   if (selectedVideo) {
-    return <VideoPlayer video={selectedVideo} onBack={() => setSelectedVideo(null)} />;
+    return <VideoPlayer video={selectedVideo} onBack={() => setSelectedVideo(null)} videos={videos} />;
   }
 
   if (activeSection === 'upload') {
@@ -179,8 +152,13 @@ const Index = () => {
           </h1>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {mockVideos.map((video) => (
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <Icon name="Loader2" size={48} className="animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {videos.map((video) => (
             <div
               key={video.id}
               className="cursor-pointer group"
@@ -214,8 +192,9 @@ const Index = () => {
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );
@@ -224,86 +203,94 @@ const Index = () => {
 interface VideoPlayerProps {
   video: Video;
   onBack: () => void;
+  videos: Video[];
 }
 
-const VideoPlayer = ({ video, onBack }: VideoPlayerProps) => {
-  const [comments, setComments] = useState([
-    {
-      id: '1',
-      author: 'Иван Петров',
-      avatar: '/placeholder.svg',
-      text: 'Отличное видео! Очень полезная информация',
-      likes: 142,
-      time: '2 дня назад',
-      replies: [
-        {
-          id: '1-1',
-          author: 'Мария Сидорова',
-          avatar: '/placeholder.svg',
-          text: 'Согласен, автор молодец!',
-          likes: 23,
-          time: '1 день назад'
-        }
-      ]
-    },
-    {
-      id: '2',
-      author: 'Алексей Иванов',
-      avatar: '/placeholder.svg',
-      text: 'Можно подробнее рассказать про этот момент?',
-      likes: 87,
-      time: '1 день назад',
-      replies: []
-    }
-  ]);
-
+const VideoPlayer = ({ video, onBack, videos }: VideoPlayerProps) => {
+  const [videoData, setVideoData] = useState<any>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
 
-  const addComment = () => {
-    if (newComment.trim()) {
-      setComments([
-        {
-          id: Date.now().toString(),
-          author: 'Вы',
-          avatar: '/placeholder.svg',
-          text: newComment,
-          likes: 0,
-          time: 'только что',
-          replies: []
-        },
-        ...comments
-      ]);
-      setNewComment('');
+  useEffect(() => {
+    fetchVideoData();
+  }, [video.id]);
+
+  const fetchVideoData = async () => {
+    try {
+      const response = await fetch(`${API_URL}?video_id=${video.id}`);
+      const data = await response.json();
+      setVideoData(data);
+      setComments(data.comments || []);
+    } catch (error) {
+      console.error('Error fetching video:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const addReply = (commentId: string) => {
-    if (replyText.trim()) {
-      setComments(comments.map(comment => {
-        if (comment.id === commentId) {
-          return {
-            ...comment,
-            replies: [
-              ...comment.replies,
-              {
-                id: `${commentId}-${Date.now()}`,
-                author: 'Вы',
-                avatar: '/placeholder.svg',
-                text: replyText,
-                likes: 0,
-                time: 'только что'
-              }
-            ]
-          };
-        }
-        return comment;
-      }));
-      setReplyText('');
-      setReplyTo(null);
+  const addComment = async () => {
+    if (newComment.trim()) {
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'add_comment',
+            video_id: video.id,
+            text: newComment
+          })
+        });
+        const newCommentData = await response.json();
+        setComments([newCommentData, ...comments]);
+        setNewComment('');
+      } catch (error) {
+        console.error('Error adding comment:', error);
+      }
     }
   };
+
+  const addReply = async (commentId: string) => {
+    if (replyText.trim()) {
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'add_comment',
+            video_id: video.id,
+            parent_comment_id: commentId,
+            text: replyText
+          })
+        });
+        const newReply = await response.json();
+        
+        setComments(comments.map(comment => {
+          if (comment.id === commentId) {
+            return {
+              ...comment,
+              replies: [...comment.replies, newReply]
+            };
+          }
+          return comment;
+        }));
+        setReplyText('');
+        setReplyTo(null);
+      } catch (error) {
+        console.error('Error adding reply:', error);
+      }
+    }
+  };
+
+  if (loading || !videoData) {
+    return (
+      <div className=\"min-h-screen bg-background flex items-center justify-center\">
+        <Icon name=\"Loader2\" size={48} className=\"animate-spin text-muted-foreground\" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -328,17 +315,17 @@ const VideoPlayer = ({ video, onBack }: VideoPlayerProps) => {
               </div>
             </div>
 
-            <h1 className="text-2xl font-bold mb-3">{video.title}</h1>
+            <h1 className="text-2xl font-bold mb-3">{videoData.title}</h1>
 
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
               <div className="flex items-center gap-4">
                 <Avatar className="w-10 h-10">
-                  <AvatarImage src={video.avatar} />
-                  <AvatarFallback>{video.channel[0]}</AvatarFallback>
+                  <AvatarImage src={videoData.channelAvatar} />
+                  <AvatarFallback>{videoData.channel[0]}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium">{video.channel}</p>
-                  <p className="text-sm text-muted-foreground">1.2M подписчиков</p>
+                  <p className="font-medium">{videoData.channel}</p>
+                  <p className="text-sm text-muted-foreground">{videoData.subscribersCount} подписчиков</p>
                 </div>
                 <Button className="ml-4 bg-primary text-primary-foreground hover:bg-primary/90">
                   Подписаться
@@ -348,7 +335,7 @@ const VideoPlayer = ({ video, onBack }: VideoPlayerProps) => {
               <div className="flex items-center gap-2">
                 <Button variant="secondary" size="sm">
                   <Icon name="ThumbsUp" size={18} className="mr-2" />
-                  12K
+                  {videoData.likes}
                 </Button>
                 <Button variant="secondary" size="sm">
                   <Icon name="Share2" size={18} className="mr-2" />
@@ -487,8 +474,8 @@ const VideoPlayer = ({ video, onBack }: VideoPlayerProps) => {
           <div>
             <h2 className="text-lg font-semibold mb-4">Рекомендуемые</h2>
             <div className="space-y-3">
-              {mockVideos.slice(0, 4).map((v) => (
-                <div key={v.id} className="flex gap-2 cursor-pointer group" onClick={() => window.location.reload()}>
+              {videos.slice(0, 4).filter(v => v.id !== video.id).map((v) => (
+                <div key={v.id} className="flex gap-2 cursor-pointer group" onClick={onBack}>
                   <div className="relative w-40 flex-shrink-0 rounded-lg overflow-hidden bg-accent">
                     <img
                       src={v.thumbnail}
@@ -541,7 +528,7 @@ const UploadSection = ({ onBack }: { onBack: () => void }) => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!videoFile) {
@@ -562,14 +549,36 @@ const UploadSection = ({ onBack }: { onBack: () => void }) => {
       return;
     }
 
-    toast({
-      title: "Видео загружается",
-      description: `"${uploadData.title}" будет опубликовано после обработки`,
-    });
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_video',
+          title: uploadData.title,
+          description: uploadData.description,
+          category: uploadData.category,
+          channel_id: 1
+        })
+      });
 
-    setTimeout(() => {
-      onBack();
-    }, 2000);
+      const result = await response.json();
+
+      toast({
+        title: "Видео загружено!",
+        description: `"${uploadData.title}" успешно опубликовано`,
+      });
+
+      setTimeout(() => {
+        onBack();
+      }, 1500);
+    } catch (error) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось загрузить видео",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

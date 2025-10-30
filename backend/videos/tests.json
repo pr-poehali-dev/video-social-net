@@ -1,0 +1,16 @@
+{
+  "tests": [
+    {
+      "name": "Get all videos",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get single video with comments",
+      "method": "GET",
+      "path": "/?video_id=1",
+      "expectedStatus": 200
+    }
+  ]
+}
